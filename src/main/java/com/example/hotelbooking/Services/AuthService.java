@@ -1,17 +1,21 @@
 package com.example.hotelbooking.Services;
 
 
-import com.example.hotelbooking.DTOs.Auth.AuthResponse;
+import com.example.hotelbooking.DTOs.AuthResponse;
 import com.example.hotelbooking.DTOs.AuthRegisterRequest;
 import com.example.hotelbooking.DTOs.AuthRequest;
 import com.example.hotelbooking.DTOs.CustomerProfile.CustomerProfileRequest;
 import com.example.hotelbooking.DTOs.Role.RoleResponse;
 import com.example.hotelbooking.DTOs.UserResponse;
+import com.example.hotelbooking.DTOs.User.UserDto;
 import com.example.hotelbooking.Models.CustomerProfile;
 import com.example.hotelbooking.Models.Role;
 import com.example.hotelbooking.Respositories.CustomerProfileRepository;
 import com.example.hotelbooking.Respositories.RoleRepository;
 import com.example.hotelbooking.Respositories.UserRepository;
+import com.example.hotelbooking.Models.Permission;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -115,10 +119,33 @@ public class AuthService {
             throw new BadCredentialsException("Invalid username password provided");
         }
 
+        User user = userRepository.findByUsername(request.getUsername())
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + request.getUsername()));
+
         UserDetails userDetails = userDetailsService.loadUserByUsername(request.getUsername());
         final String token = jwtUtil.generateToken(userDetails);
 
-        return ResponseEntity.ok(new AuthResponse(token));
+        Set<String> roles = user.getRoles().stream()
+                .map(Role::getName)
+                .collect(Collectors.toSet());
+
+        Set<String> permissions = user.getRoles().stream()
+                .flatMap(role -> role.getPermissions().stream())
+                .map(Permission::getName)
+                .collect(Collectors.toSet());
+
+        UserDto userDto = UserDto.builder()
+                .publicId(user.getPublicId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .roles(roles)
+                .permissions(permissions)
+                .build();
+
+        return ResponseEntity.ok(AuthResponse.builder()
+                .token(token)
+                .user(userDto)
+                .build());
 
     }
 }

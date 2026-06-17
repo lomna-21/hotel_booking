@@ -2,7 +2,7 @@ package com.example.hotelbooking.Controllers;
 
 
 import com.example.hotelbooking.DTOs.AuthRequest;
-import com.example.hotelbooking.DTOs.Auth.AuthResponse;
+import com.example.hotelbooking.DTOs.AuthResponse;
 import com.example.hotelbooking.DTOs.AuthRegisterRequest;
 import com.example.hotelbooking.DTOs.CustomerProfile.CustomerProfileRequest;
 import com.example.hotelbooking.Services.AuthService;

@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Data
@@ -17,5 +18,13 @@ public class BookingConfirmedResponse {
     private String paymentId;
     private LocalDate checkin;
     private LocalDate checkOut;
+    private String bookingStatus;
+    private BigDecimal amount;
+    private String firstName;
+    private String lastName;
+    private String phone;
+    private String email;
+    private String roomNumber;
+    private String roomType;
 
 }

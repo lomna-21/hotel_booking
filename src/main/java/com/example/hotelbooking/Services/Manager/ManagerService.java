@@ -3,6 +3,7 @@ package com.example.hotelbooking.Services.Manager;
 import com.example.hotelbooking.DTOs.Booking.BookingResponse;
 import com.example.hotelbooking.DTOs.Booking.BookingWithCustomerRequest;
 import com.example.hotelbooking.DTOs.Booking.CustomerBookingRequest;
+import com.example.hotelbooking.DTOs.Booking.BookingConfirmedResponse;
 import com.example.hotelbooking.DTOs.CustomerProfile.CustomerProfileResponse;
 import com.example.hotelbooking.DTOs.Hotel.HotelRequest;
 import com.example.hotelbooking.DTOs.Hotel.HotelResponse;
@@ -45,6 +46,8 @@ public class ManagerService {
     private final BookingLockService bookingLockService;
     private final CustomerProfileRepository customerProfileRepository;
     private final PaymentService paymentService;
+    private final BookingRepository bookingRepository;
+    private final PaymentRepository paymentRepository;
 
     //    OWNER METHODS FOR CREATING MANAGING AND VIEWING MANAGERS
     @PreAuthorize("hasRole('OWNER')")
@@ -242,6 +245,80 @@ public class ManagerService {
     public ResponseEntity<String> makePayment(String paymentPublicId, CreatePaymentRequest request){
 
         return paymentService.makeOnlinePayment(paymentPublicId,request);
+    }
+
+    @PreAuthorize("hasRole('MANAGER') and hasPermission(#hotelPublicId, 'hotel', 'view:booking')")
+    public ResponseEntity<List<BookingConfirmedResponse>> getBookings(String hotelPublicId) {
+        CustomUserDetails userDetails = (CustomUserDetails) SecurityContextHolder
+                .getContext().getAuthentication().getPrincipal();
+        User manager = userDetails.getUser();
+
+        Hotel hotel = hotelRepository.findByPublicId(hotelPublicId)
+                .orElseThrow(() -> new ResourceNotFoundException("Hotel not found"));
+
+        if (!hotelManagerRepository.findByHotel_IdAndUser_Id(hotel.getId(), manager.getId()).isPresent()) {
+            throw new AccessDeniedException("You are not assigned to manage this hotel");
+        }
+
+        List<Booking> bookings = bookingRepository.findAllByHotelId(hotel.getId());
+
+        List<BookingConfirmedResponse> responses = bookings.stream()
+                .map(booking -> {
+                    Payment payment = paymentRepository.findByBooking_Id(booking.getId())
+                            .orElse(null);
+                    String paymentId = payment != null ? payment.getPublicId() : "N/A";
+
+                    return BookingConfirmedResponse.builder()
+                            .bookingId(booking.getPublicId())
+                            .paymentId(paymentId)
+                            .checkin(booking.getCheckIn())
+                            .checkOut(booking.getCheckOut())
+                            .bookingStatus(booking.getBookingStatus())
+                            .amount(booking.getTotalAmount())
+                            .firstName(booking.getFirstName())
+                            .lastName(booking.getLastName())
+                            .phone(booking.getPhone())
+                            .email(booking.getEmail())
+                            .roomNumber(booking.getRoom() != null ? booking.getRoom().getRoomNumber() : "N/A")
+                            .roomType(booking.getRoom() != null ? booking.getRoom().getRoomType() : "N/A")
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(responses);
+    }
+
+    @Transactional
+    @PreAuthorize("hasRole('MANAGER')")
+    public ResponseEntity<String> cancelBooking(String bookingPublicId) {
+        CustomUserDetails userDetails = (CustomUserDetails) SecurityContextHolder
+                .getContext().getAuthentication().getPrincipal();
+        User manager = userDetails.getUser();
+
+        Booking booking = bookingRepository.findByPublicId(bookingPublicId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+
+        if (!hotelManagerRepository.findByHotel_IdAndUser_Id(booking.getHotel().getId(), manager.getId()).isPresent()) {
+            throw new AccessDeniedException("You are not assigned to manage this hotel");
+        }
+
+        if (!"PENDING".equalsIgnoreCase(booking.getBookingStatus())) {
+            throw new IllegalArgumentException("Only PENDING bookings can be cancelled manually");
+        }
+
+        booking.setBookingStatus("CANCELLED");
+        if (booking.getRoom() != null) {
+            booking.getRoom().setRoomStatus("AVAILABLE");
+            roomRepository.save(booking.getRoom());
+        }
+        bookingRepository.save(booking);
+
+        paymentRepository.findByBooking_Id(booking.getId()).ifPresent(payment -> {
+            payment.setStatus("CANCELLED");
+            paymentRepository.save(payment);
+        });
+
+        return ResponseEntity.ok("Booking cancelled successfully and room is now available.");
     }
 
     @Transactional

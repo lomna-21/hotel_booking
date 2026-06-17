@@ -1,6 +1,7 @@
 package com.example.hotelbooking.Controllers.ManagerController;
 
 import com.example.hotelbooking.DTOs.Booking.BookingResponse;
+import com.example.hotelbooking.DTOs.Booking.BookingConfirmedResponse;
 import com.example.hotelbooking.DTOs.Booking.BookingWithCustomerRequest;
 import com.example.hotelbooking.DTOs.Hotel.HotelResponse;
 import com.example.hotelbooking.DTOs.Payment.CreatePaymentRequest;
@@ -70,5 +71,17 @@ public class ManagerController {
         return managerService.makePayment(paymentPublicId, request);
     }
 
+    @Operation(summary = "Api for manager to view all bookings of an assigned hotel")
+    @PreAuthorize("hasRole('MANAGER')")
+    @GetMapping("/{hotelPublicId}/bookings")
+    public ResponseEntity<List<BookingConfirmedResponse>> getBookings(@PathVariable String hotelPublicId) {
+        return managerService.getBookings(hotelPublicId);
+    }
 
+    @Operation(summary = "Api for manager to cancel a pending booking")
+    @PreAuthorize("hasRole('MANAGER')")
+    @PostMapping("/booking/{bookingPublicId}/cancel")
+    public ResponseEntity<String> cancelBooking(@PathVariable String bookingPublicId) {
+        return managerService.cancelBooking(bookingPublicId);
+    }
 }

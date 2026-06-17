@@ -143,6 +143,10 @@ public class CustomerService {
                             .paymentId(paymentId)
                             .checkin(booking.getCheckIn())
                             .checkOut(booking.getCheckOut())
+                            .bookingStatus(booking.getBookingStatus())
+                            .amount(booking.getTotalAmount())
+                            .roomNumber(booking.getRoom() != null ? booking.getRoom().getRoomNumber() : "N/A")
+                            .roomType(booking.getRoom() != null ? booking.getRoom().getRoomType() : "N/A")
                             .build();
                 })
                 .collect(Collectors.toList());
