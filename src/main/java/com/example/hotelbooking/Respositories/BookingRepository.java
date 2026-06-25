@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Repository
 public interface BookingRepository extends JpaRepository<Booking, Long> {
@@ -41,5 +42,11 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     );
 
     Optional<Booking> findByPublicIdAndCustomer_Id(String publicId, Long customerId);
+
+    @Query("SELECT b.room.id FROM Booking b WHERE b.bookingStatus = 'CONFIRMED' AND b.checkIn <= CURRENT_DATE AND b.checkOut >= CURRENT_DATE")
+    Set<Long> findCurrentlyBookedRoomIds();
+
+    @Query("SELECT b.room.id FROM Booking b WHERE b.bookingStatus = 'CONFIRMED' AND b.checkIn < :checkOut AND b.checkOut > :checkIn")
+    Set<Long> findBookedRoomIdsBetween(@Param("checkIn") LocalDate checkIn, @Param("checkOut") LocalDate checkOut);
 
 }

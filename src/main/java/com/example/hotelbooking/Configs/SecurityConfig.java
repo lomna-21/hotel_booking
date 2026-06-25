@@ -71,6 +71,7 @@ public class SecurityConfig {
                         .antMatchers("/api/manage-hotels/**").hasAnyRole("OWNER","ADMIN")
                         .antMatchers("/api/manager").hasRole("MANAGER")
                         .antMatchers("/api/admin/**").hasRole("ADMIN")
+                        .antMatchers("/api/ai/**").hasAnyRole("CUSTOMER","MANAGER","OWNER","ADMIN")
                         .anyRequest().authenticated())
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
