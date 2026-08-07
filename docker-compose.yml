@@ -1,0 +1,47 @@
+version: '3.8'
+services:
+  hotelbooking:
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    container_name: hotelbooking
+    ports:
+      - "8080:8080"
+    restart: on-failure
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      JWT_SECRET: ${JWT_SECRET}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      DB_URL: ${DB_URL}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_SSL: ${REDIS_SSL}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
+      KAFKA_USERNAME: ${KAFKA_USERNAME}
+      KAFKA_PASSWORD: ${KAFKA_PASSWORD}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+
+  emailservice:
+    build:
+      context: ../emailservice
+      dockerfile: Dockerfile.local
+    container_name: emailservice
+    restart: on-failure
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
+      KAFKA_USERNAME: ${KAFKA_USERNAME}
+      KAFKA_PASSWORD: ${KAFKA_PASSWORD}

@@ -1,5 +1,6 @@
 package com.example.hotelbooking.Services.Booking;
 
+import com.example.hotelbooking.Constants.RedisConstants;
 import com.example.hotelbooking.DTOs.Booking.BookingResponse;
 import com.example.hotelbooking.DTOs.Booking.CustomerBookingRequest;
 import com.example.hotelbooking.ExceptionHandler.NoRoomsAvailableException;
@@ -9,7 +10,9 @@ import com.example.hotelbooking.Respositories.BookingRepository;
 import com.example.hotelbooking.Respositories.PaymentRepository;
 import com.example.hotelbooking.Respositories.RoomRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
@@ -20,6 +23,7 @@ import javax.transaction.Transactional;
 import java.math.BigDecimal;
 import java.time.temporal.ChronoUnit;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class BookingLockService {
@@ -27,6 +31,7 @@ public class BookingLockService {
     private final RoomRepository roomRepository;
     private final BookingRepository bookingRepository;
     private final PaymentRepository paymentRepository;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     @Retryable(
             value = OptimisticLockingFailureException.class,
@@ -52,6 +57,11 @@ public class BookingLockService {
             // if another thread saved first, version mismatch → exception
             room.setRoomStatus("BOOKED");
             roomRepository.save(room);
+            try {
+                redisTemplate.delete(RedisConstants.HOTEL_ROOMS_KEY_PREFIX + hotel.getPublicId());
+            } catch (Exception e) {
+                log.warn("Cache invalidation failed for: "+hotel.getPublicId());
+            }
 
             // create PENDING booking
             Booking booking = Booking.builder()
@@ -111,6 +121,11 @@ public class BookingLockService {
         // lock is held until transaction commits
         room.setRoomStatus("BOOKED");
         roomRepository.save(room);
+        try {
+            redisTemplate.delete(RedisConstants.HOTEL_ROOMS_KEY_PREFIX + hotel.getPublicId());
+        } catch (Exception e) {
+            log.warn("Cache invalidation failed for: "+hotel.getPublicId());
+        }
 
         // create PENDING booking
         Booking booking = Booking.builder()

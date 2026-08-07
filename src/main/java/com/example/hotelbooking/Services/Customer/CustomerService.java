@@ -1,5 +1,6 @@
 package com.example.hotelbooking.Services.Customer;
 
+import com.example.hotelbooking.Constants.RedisConstants;
 import com.example.hotelbooking.DTOs.Booking.BookingConfirmedResponse;
 import com.example.hotelbooking.DTOs.Booking.BookingResponse;
 import com.example.hotelbooking.DTOs.Booking.CustomerBookingRequest;
@@ -11,7 +12,9 @@ import com.example.hotelbooking.Models.*;
 import com.example.hotelbooking.Respositories.*;
 import com.example.hotelbooking.Services.Booking.BookingLockService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.cache.CacheProperties;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -20,6 +23,7 @@ import org.springframework.stereotype.Service;
 import javax.transaction.Transactional;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -32,6 +36,8 @@ public class CustomerService {
     private final BookingLockService bookingLockService;
     private final BookingRepository bookingRepository;
     private final PaymentRepository paymentRepository;
+    private final RedisTemplate<String, Object> redisTemplate;
+
 
     @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<List<CustomerHotelResponse>> getHotels (){
@@ -50,9 +56,20 @@ public class CustomerService {
     @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<List<CustomerRoomResponse>> getRooms(String hotelPublicId){
 
+
+        String hotel_key= RedisConstants.HOTEL_KEY_PREFIX+hotelPublicId;
+
+        String hotel_rooms_key= RedisConstants.HOTEL_ROOMS_KEY_PREFIX+hotelPublicId;
+        List<CustomerRoomResponse> cachedRooms= (List<CustomerRoomResponse>) redisTemplate.opsForValue().get(hotel_rooms_key);
+        if(cachedRooms != null){
+            System.out.println("Cache hit");
+            return ResponseEntity.ok().body(cachedRooms);
+        }
+
         Hotel hotel = hotelRepository.findByPublicId(hotelPublicId).orElseThrow( ()
                 -> new HotelNotFoundException("Hotel not found")
         );
+
 
         List<Room> rooms = roomRepository.findAllByHotel_Id(hotel.getId());
 
@@ -84,7 +101,8 @@ public class CustomerService {
                             .build();
                 })
                 .collect(Collectors.toList());
-
+        redisTemplate.opsForValue().set(hotel_rooms_key, responses, RedisConstants.TTL_MINUTES, TimeUnit.MINUTES);
+        System.out.println("Cache set");
         return ResponseEntity.ok(responses);
     }
 

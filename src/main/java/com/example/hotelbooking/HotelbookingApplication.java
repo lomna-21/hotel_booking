@@ -5,6 +5,7 @@ import com.example.hotelbooking.Models.Role;
 import com.example.hotelbooking.Models.User;
 import com.example.hotelbooking.Respositories.RoleRepository;
 import com.example.hotelbooking.Respositories.UserRepository;
+import io.github.cdimascio.dotenv.Dotenv;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -24,6 +25,14 @@ import java.util.Set;
 public class HotelbookingApplication {
 
 	public static void main(String[] args) {
+
+		Dotenv dotenv = Dotenv.configure()
+				.ignoreIfMissing()
+				.load();
+
+		dotenv.entries().forEach(entry ->
+				System.setProperty(entry.getKey(), entry.getValue())
+		);
 		SpringApplication.run(HotelbookingApplication.class, args);
 	}
 
